@@ -14,17 +14,17 @@ class DischargingProblem(object):
 
     def solve(self):
         n = len(self.a)
-        p = []
+        pD = []
 
         if self.kp == 1:
             for i in range(n):
-                p.append(0 if self.a[i] - self.b[i] >= 0 else np.inf)
+                pD.append(0 if self.a[i] - self.b[i] >= 0 else np.inf)
         else:
             for i in range(n):
                 if self.b[i] < 0:
-                    p.append(0)
+                    pD.append(0)
                 else:
-                    p.append((self.b/(self.a*self.kp))
-                             ** (1/(self.kp-1)) - self.b)
+                    pD.append((self.b[i]/(self.a[i]*self.kp))
+                              ** (1/(self.kp-1)) - self.b[i])
 
-        return np.array(p)
+        return np.array(pD)

@@ -1,8 +1,9 @@
+import math
+from typing import Dict, List, Optional, Tuple
+
+import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-from typing import List, Dict, Tuple, Optional
-import matplotlib.pyplot as plt
-import math
 
 
 class NetworkFlowProblem(object):
@@ -37,6 +38,8 @@ class NetworkFlowProblem(object):
 
         self.capacities = {(u, v): c for u, v,
                            c in self.G.edges(data="capacity")}
+        self.flow = {}
+        self.X = np.zeros((self.n, self.n))
 
         self.drawing_settings = {}
         self.drawing_settings['node_pos'] = self._get_node_positions()
@@ -94,6 +97,8 @@ class NetworkFlowProblem(object):
             for R, w in value.items():
                 if w > 0:
                     self.flow[(L, R)] = w
+        self.X = np.matrix([[self.flow.get((f'L{i}', f'R{j}'), 0) for j in range(
+            self.n)] for i in range(self.n)])
 
     def _get_node_positions(self) -> Dict:
         node_pos = {}

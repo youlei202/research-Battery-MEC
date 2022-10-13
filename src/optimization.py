@@ -119,7 +119,7 @@ class Problem(MetaProblem):
         for i in range(self.n):
             rhs = (self.lam[i] - np.sum(X[i]) +
                    np.sum(X[:, i])) * self.p[i] / self.mu[i]
-            pD[i] = min(pD[i], rhs)
+            pD[i] = min(pD[i], rhs, self.pS[i])
         return pD, X
 
 

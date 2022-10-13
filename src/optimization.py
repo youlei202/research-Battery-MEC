@@ -6,7 +6,7 @@ from src.sp1 import NetworkFlowProblem
 from src.sp2 import DischargingProblem
 
 
-class Problem():
+class MetaProblem:
 
     def __init__(self,
                  alpha: float, kp: int,
@@ -14,8 +14,6 @@ class Problem():
                  cG: np.array, cD: np.array, pS: np.array, C: np.matrix,
                  ) -> None:
         self.n = len(lam)
-        self.best_dual = -10000
-
         self.alpha = alpha
         self.kp = kp
         self.lam = lam
@@ -28,20 +26,43 @@ class Problem():
 
         self.pD = np.zeros(self.n)
         self.X = np.zeros((self.n, self.n))
+
+    def optimize(self, **kwargs) -> Tuple[float, np.array, np.matrix]:
+        pass
+
+    def _objective_function(self, pD: np.array, X: np.matrix) -> float:
+        return np.sum(
+            (self.lam - np.asarray(np.dot(X, np.ones(self.n))).squeeze() +
+             np.asarray(np.dot(np.ones(self.n), X)).squeeze()) * self.p * self.cG / self.mu
+            - pD * (self.cG - self.cD) + self.alpha * (pD / self.pS) ** self.kp +
+            np.asarray(np.dot(X*self.C, np.ones(self.n))).squeeze()
+        )
+
+
+class Problem(MetaProblem):
+
+    def __init__(self,
+                 alpha: float, kp: int,
+                 lam: np.array, mu: np.array, p: np.array,
+                 cG: np.array, cD: np.array, pS: np.array, C: np.matrix,
+                 ) -> None:
+        super().__init__(alpha=alpha, kp=kp, lam=lam, mu=mu,
+                         p=p, cG=cG, cD=cD, pS=pS, C=C)
+        self.best_dual = -10000
         self.dual_var = np.ones(self.n)
 
     def optimize(self, max_iter: Optional[int] = 100) -> Tuple[float, np.array, np.matrix]:
 
         for i in range(max_iter):
-            print(f'Iteration {i+1}')
+            # print(f'Iteration {i+1}')
             self.subproblem_1, self.subproblem_2 = self._lagrangian_decomposition(
                 self.dual_var)
             _, _ = self.subproblem_1.solve()
-            print('\t SP1 solved')
+            # print('\t SP1 solved')
 
             self.X = self.subproblem_1.X
             self.pD = self.subproblem_2.solve()
-            print('\t SP2 solved')
+            # print('\t SP2 solved')
 
             self.pD, self.X = self._heuristic(self.pD, self.X)
 
@@ -58,13 +79,13 @@ class Problem():
 
             iter_rate = max(
                 min(numerator/denominator if denominator > 0 else 0.01, 0.01), 2)
-            print(
-                '\t', f'best_dual={self.best_dual}, dual={dual}, iter_rate={iter_rate}')
+            # print(
+            #     '\t', f'best_dual={self.best_dual}, dual={dual}, iter_rate={iter_rate}')
 
             self.dual_var = (self.dual_var + iter_rate*penalty).clip(min=0)
 
         obj = self._objective_function(pD=self.pD, X=self.X)
-        print(f'objective={obj}')
+        print(f'Objective={obj}, best dual={self.best_dual}')
 
         return obj, self.pD, self.X
 
@@ -95,17 +116,38 @@ class Problem():
     def _lagrangian_penalty(self, pD: np.array, X: np.matrix) -> float:
         return pD - (self.lam - np.asarray(np.dot(X, np.ones(self.n))).squeeze() + np.asarray(np.dot(np.ones(self.n), X)).squeeze()) * self.p / self.mu
 
-    def _objective_function(self, pD: np.array, X: np.matrix) -> float:
-        return np.sum(
-            (self.lam - np.asarray(np.dot(X, np.ones(self.n))).squeeze() +
-             np.asarray(np.dot(np.ones(self.n), X)).squeeze()) * self.p * self.cG / self.mu
-            - pD * (self.cG - self.cD) + self.alpha * (pD / self.pS) ** self.kp +
-            np.asarray(np.dot(X*self.C, np.ones(self.n))).squeeze()
-        )
-
     def _heuristic(self, pD, X) -> Tuple[np.array, np.matrix]:
         for i in range(self.n):
             rhs = (self.lam[i] - np.sum(X[i]) +
                    np.sum(X[:, i])) * self.p[i] / self.mu[i]
             pD[i] = min(pD[i], rhs)
         return pD, X
+
+
+class BaselineProblem(MetaProblem):
+
+    def __init__(self,
+                 alpha: float, kp: int,
+                 lam: np.array, mu: np.array, p: np.array,
+                 cG: np.array, cD: np.array, pS: np.array, C: np.matrix,
+                 ) -> None:
+        super().__init__(alpha=alpha, kp=kp, lam=lam, mu=mu,
+                         p=p, cG=cG, cD=cD, pS=pS, C=C)
+        weights_baseline = np.zeros((self.n, self.n))
+        for i in range(self.n):
+            for j in range(self.n):
+                weights_baseline[i][j] = (
+                    p[j]*cG[j]/mu[j] + C[i][j] - p[i]*cG[i]/mu[i])
+
+        self.problem = NetworkFlowProblem(
+            arrival_rates=lam, weights=weights_baseline)
+
+    def optimize(self) -> Tuple[float, np.array, np.matrix]:
+        min_cost, _ = self.problem.solve()
+        self.X = self.problem.X
+        self.pD = np.zeros(self.n)
+
+        obj = self._objective_function(pD=self.pD, X=self.X)
+        print(f'Baseline objective = {obj}')
+
+        return obj, self.pD, self.X

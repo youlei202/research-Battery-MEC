@@ -12,6 +12,8 @@ class DischargingProblem(object):
         self.a = alpha / pS**kp
         self.b = cG - cD - dual_var
 
+        self.pS = pS
+
     def solve(self):
         n = len(self.a)
         pD = []
@@ -27,4 +29,4 @@ class DischargingProblem(object):
                     pD.append((self.b[i]/(self.a[i]*self.kp))
                               ** (1/(self.kp-1)) - self.b[i])
 
-        return np.array(pD)
+        return np.array(pD).clip(max=self.pS)

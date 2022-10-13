@@ -64,14 +64,13 @@ class Problem(MetaProblem):
             self.pD = self.subproblem_2.solve()
             # print('\t SP2 solved')
 
-            self.pD, self.X = self._heuristic(self.pD, self.X)
-
             dual = self._lagrangian_dual_function(
                 dual_var=self.dual_var, pD=self.pD, X=self.X)
 
             if dual > self.best_dual:
                 self.best_dual = dual
 
+            self.pD, self.X = self._heuristic(self.pD, self.X)
             penalty = self._lagrangian_penalty(pD=self.pD, X=self.X)
 
             numerator = abs(self.best_dual - dual)

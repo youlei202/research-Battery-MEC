@@ -96,7 +96,7 @@ class Problem(MetaProblem):
 
             self.dual_var = (self.dual_var + iter_rate*penalty).clip(min=0)
 
-        print(f'Objective={self.best_obj}, best dual={self.best_dual}')
+        # print(f'Objective={self.best_obj}, best dual={self.best_dual}')
 
         return self.best_obj, self.best_pD, self.best_X
 
@@ -159,6 +159,6 @@ class BaselineProblem(MetaProblem):
         self.pD = np.zeros(self.n)
 
         obj = self._objective_function(pD=self.pD, X=self.X)
-        print(f'Baseline objective = {obj}')
+        # print(f'Baseline objective = {obj}')
 
         return obj, self.pD, self.X

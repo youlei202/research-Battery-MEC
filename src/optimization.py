@@ -48,7 +48,7 @@ class Problem(MetaProblem):
                  ) -> None:
         super().__init__(alpha=alpha, kp=kp, lam=lam, mu=mu,
                          p=p, cG=cG, cD=cD, pS=pS, C=C)
-        self.best_dual = np.inf
+        self.best_dual = -np.inf
         self.dual_var = np.ones(self.n)
         self.best_obj = np.inf
 
@@ -67,32 +67,32 @@ class Problem(MetaProblem):
             self.X = self.subproblem_1.X
             self.pD = self.subproblem_2.solve()
             # print('\t SP2 solved')
+            penalty = self._lagrangian_penalty(pD=self.pD, X=self.X)
             self.pD, self.X = self._heuristic(self.pD, self.X)
 
             dual = self._lagrangian_dual_function(
                 dual_var=self.dual_var, pD=self.pD, X=self.X)
 
-            if dual < self.best_dual:
-                self.best_dual = dual
-                self.best_dual_X = self.X
-                self.best_dual_pD = self.pD
-                self.best_dual_dual_var = self.dual_var
-
-            penalty = self._lagrangian_penalty(pD=self.pD, X=self.X)
+            # if dual > self.best_dual:
+            #     self.best_dual = dual
+            #     self.best_dual_X = self.X
+            #     self.best_dual_pD = self.pD
+            #     self.best_dual_dual_var = self.dual_var
 
             obj = self._objective_function(pD=self.pD, X=self.X)
             if obj < self.best_obj:
                 self.best_obj = obj
+                self.best_dual = dual
                 self.best_pD, self.best_X = self.pD, self.X
                 self.best_dual_var = self.dual_var
 
-            numerator = abs(self.best_dual - dual)
+            numerator = abs(self.best_dual - dual) + 0.1
             denominator = np.linalg.norm(penalty, 2)**2
 
             iter_rate = max(
-                min(numerator/denominator if denominator > 0 else 0.01, 0.01), 2)
+                numerator/denominator if denominator > 0 else 0.5, 0)
             # print(
-            #     '\t', f'best_dual={self.best_dual}, dual={dual}, iter_rate={iter_rate}')
+            #     '\t', f'best_dual={self.best_dual}, obj={obj}, dual={dual}, iter_rate={iter_rate}')
 
             self.dual_var = (self.dual_var + iter_rate*penalty).clip(min=0)
 

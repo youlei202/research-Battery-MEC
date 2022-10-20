@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -63,11 +63,11 @@ class NetworkFlowProblem(object):
         nx.draw_networkx_edge_labels(
             self.G, node_pos, ax=ax, edge_labels=self.capacities)
 
-    def visualize_flow(self, figsize: Optional[Tuple[int, int]] = (16, 9)) -> None:
+    def visualize_flow(self, figsize: Optional[Tuple[int, int]] = (16, 9)) -> Any:
         """Visualize flow returned by the `check_valid_flow` funcion."""
         flow_graph = self._check_valid_flow()
 
-        _, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots(figsize=figsize)
         node_pos = self.drawing_settings['node_pos']
         node_colors = self.drawing_settings['node_colors']
 
@@ -90,6 +90,8 @@ class NetworkFlowProblem(object):
                 node_color=flow_nc, edge_color=flow_ec)
         nx.draw_networkx_edge_labels(
             self.G, node_pos, edge_labels=edge_labels, ax=ax)
+
+        return fig, ax
 
     def _get_flows(self) -> None:
         self.flow = {}

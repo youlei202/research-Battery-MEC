@@ -99,7 +99,7 @@ class NetworkFlowProblem(object):
             for R, w in value.items():
                 if w > 0:
                     self.flow[(L, R)] = w
-        self.X = np.matrix([[self.flow.get((f'L{i}', f'R{j}'), 0) for j in range(
+        self.X = np.array([[self.flow.get((f'L{i}', f'R{j}'), 0) for j in range(
             self.n)] for i in range(self.n)])
 
     def _get_node_positions(self) -> Dict:

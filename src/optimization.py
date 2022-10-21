@@ -49,7 +49,7 @@ class Problem(MetaProblem):
         super().__init__(alpha=alpha, kp=kp, lam=lam, mu=mu,
                          p=p, cG=cG, cD=cD, pS=pS, C=C)
         self.best_dual = -np.inf
-        self.dual_var = np.ones(self.n)
+        self.dual_var = np.zeros(self.n)
         self.best_obj = np.inf
 
         self.best_X = self.X
@@ -57,46 +57,59 @@ class Problem(MetaProblem):
 
     def optimize(self, max_iter: Optional[int] = 100) -> Tuple[float, np.array, np.matrix]:
 
+        MAX_NO_PROGRESS_STEPS = 10
+        no_progress_steps = 0
+
+        last_best_dual = -np.inf
+
         for i in range(max_iter):
-            # print(f'Iteration {i+1}')
+
             self.subproblem_1, self.subproblem_2 = self._lagrangian_decomposition(
                 self.dual_var)
             _, _ = self.subproblem_1.solve()
-            # print('\t SP1 solved')
 
             self.X = self.subproblem_1.X
             self.pD = self.subproblem_2.solve()
-            # print('\t SP2 solved')
-            penalty = self._lagrangian_penalty(pD=self.pD, X=self.X)
+
             self.pD, self.X = self._heuristic(self.pD, self.X)
 
+            penalty = self._lagrangian_penalty(pD=self.pD, X=self.X)
             dual = self._lagrangian_dual_function(
                 dual_var=self.dual_var, pD=self.pD, X=self.X)
 
-            # if dual > self.best_dual:
-            #     self.best_dual = dual
-            #     self.best_dual_X = self.X
-            #     self.best_dual_pD = self.pD
-            #     self.best_dual_dual_var = self.dual_var
-
             obj = self._objective_function(pD=self.pD, X=self.X)
-            if obj < self.best_obj:
-                self.best_obj = obj
-                self.best_dual = dual
-                self.best_pD, self.best_X = self.pD, self.X
-                self.best_dual_var = self.dual_var
 
-            numerator = abs(self.best_dual - dual) + 0.1
+            numerator = abs(obj - dual)
             denominator = np.linalg.norm(penalty, 2)**2
+            iter_rate = min(
+                numerator/denominator if denominator > 0 else 0.02, 2)
 
-            iter_rate = max(
-                numerator/denominator if denominator > 0 else 0.5, 0)
             # print(
-            #     '\t', f'best_dual={self.best_dual}, obj={obj}, dual={dual}, iter_rate={iter_rate}')
+            #     f'Round={i}, dual={dual}, obj={obj}, iter_rate={iter_rate}'
+            # )
 
+            if numerator < 1e-15:
+                break
+
+            if last_best_dual - self.best_dual < 1e-15:
+                no_progress_steps += 1
+            else:
+                no_progress_steps = 0
+
+            if no_progress_steps > MAX_NO_PROGRESS_STEPS:
+                iter_rate /= 2
+
+            last_dual_var = self.dual_var
             self.dual_var = (self.dual_var + iter_rate*penalty).clip(min=0)
 
-        # print(f'Objective={self.best_obj}, best dual={self.best_dual}')
+            if np.linalg.norm(last_dual_var-self.dual_var, 2) < 1e-15:
+                break
+
+        self.best_obj = obj
+        self.best_X = self.X
+        self.best_pD = self.pD
+        self.best_dual = dual
+        print(f'Best Obj={self.best_obj}, Best Dual={self.best_dual}')
 
         return self.best_obj, self.best_pD, self.best_X
 
@@ -131,7 +144,7 @@ class Problem(MetaProblem):
         for i in range(self.n):
             rhs = (self.lam[i] - np.sum(X[i]) +
                    np.sum(X[:, i])) * self.p[i] / self.mu[i]
-            pD[i] = min(pD[i], rhs, self.pS[i])
+            pD[i] = max(min(pD[i], rhs, self.pS[i]), 0)
         return pD, X
 
 

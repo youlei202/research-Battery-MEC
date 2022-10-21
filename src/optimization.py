@@ -49,7 +49,7 @@ class Problem(MetaProblem):
         super().__init__(alpha=alpha, kp=kp, lam=lam, mu=mu,
                          p=p, cG=cG, cD=cD, pS=pS, C=C)
         self.best_dual = -np.inf
-        self.dual_var = np.ones(self.n)
+        self.dual_var = np.zeros(self.n)
         self.best_obj = np.inf
 
         self.best_X = self.X
@@ -144,7 +144,7 @@ class Problem(MetaProblem):
         for i in range(self.n):
             rhs = (self.lam[i] - np.sum(X[i]) +
                    np.sum(X[:, i])) * self.p[i] / self.mu[i]
-            pD[i] = min(pD[i], rhs, self.pS[i])
+            pD[i] = max(min(pD[i], rhs, self.pS[i]), 0)
         return pD, X
 
 

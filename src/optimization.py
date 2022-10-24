@@ -49,7 +49,7 @@ class Problem(MetaProblem):
         super().__init__(alpha=alpha, kp=kp, lam=lam, mu=mu,
                          p=p, cG=cG, cD=cD, pS=pS, C=C)
         self.best_dual = -np.inf
-        self.dual_var = np.ones(self.n) * 0
+        self.dual_var = np.ones(self.n) * 1
         self.best_obj = np.inf
 
         self.best_X = self.X
@@ -73,6 +73,7 @@ class Problem(MetaProblem):
             self.pD = self.subproblem_2.solve()
 
             self.pD, self.X = self._heuristic(self.pD, self.X)
+
             penalty = self._lagrangian_penalty(pD=self.pD, X=self.X)
             obj = self._objective_function(pD=self.pD, X=self.X)
             dual = self._lagrangian_dual_function(
@@ -80,12 +81,12 @@ class Problem(MetaProblem):
             gap = obj - dual
             last_gap = gap
 
-            # print(
-            #     f'Round={i+1}, Obj={obj}, Dual={dual}, Gap={np.round(gap,3)}')
+            print(
+                f'Round={i+1}, Obj={obj}, Dual={dual}, Gap={np.round(gap,3)}')
 
             denominator = np.linalg.norm(penalty, 2)**2
-            iter_rate = min(
-                abs(gap)/denominator if denominator > 0 else 0.02, 2)
+            iter_rate = 0.01*min(
+                abs(gap)/denominator if denominator > 0 else 0.01, 0.1)
 
             if abs(last_gap - gap) < TOL:
                 no_progress_steps += 1
